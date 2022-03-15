@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Form\PostType;
 use App\Repository\PostRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use App\Entity\Post;
@@ -23,7 +24,7 @@ class PostController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'show')]
+    #[Route('/show/{id}', name: 'show')]
     public function show(Post $post, PostRepository $postRepository): Response{
         // create the show view
         return $this->render('post/show.html.twig',[
@@ -31,19 +32,35 @@ class PostController extends AbstractController
         ]);
     }
 
-    #[Route('/create')]
+    #[Route('/create',name: 'create')]
     public function create(Request $request, ManagerRegistry $doctrine){
         // create a new post
         $post = new Post();
-        $post->setTitle('This is going to be a title :)');
 
-        // entity manager
-        $em = $doctrine->getManager();
+        $form = $this->createForm(PostType::class, $post);
+        $form->handleRequest($request);
 
-        $em->persist($post);
-        $em->flush();
+        if($form->isSubmitted() && $form->isValid()){
+            // entity manager
+            $em = $doctrine->getManager();
+            $em->persist($post);
+            $em->flush();
+            $this->addFlash('success','Post was added.');
+            return $this->redirect($this->generateUrl('postindex'));
+        }
 
         // return a response
-        return new Response('Post was created .');
+        return $this->render('post/create.html.twig', [
+            'form' => $form->createView()
+        ]);
+    }
+
+    #[Route('/remove/{id}',name: 'remove')]
+    public function remove(Post $post, ManagerRegistry $doctrine){
+        $em = $doctrine->getManager();
+        $em->remove($post);
+        $em->flush();
+        $this->addFlash('success','Post was removed .');
+        return $this->redirect($this->generateUrl('postindex'));
     }
 }
